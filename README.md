@@ -192,3 +192,80 @@ F11 = 0:0:0:0:0:0:0:0
 ExpandIPv6 has a single input parameter
 
 * ipv6 - the IPv6 address string to expand to contain all 8 hextets
+
+## Change bits within a VLAN Identifier
+
+ModVLANBits can be used to change the value of a VLAN identifier by injecting an integer value within a certain range of bits.
+
+This code does not have extensive error handling and therefore values passed to the function should be within valid ranges for VLAN IDs, bit values and replacement values. For example, if you are trying to replace 4 bits with a value like 127 which would use 7 bits, it will not work. However if you're replacing those same four bits with the number 3, it will work just fine.
+
+### Example
+
+```excel 
+A19 = 256
+B19 = 15
+C19 = 15
+D19 = =ModVLANBits(ModVLANBits(A19, 4,7,B19), 8,11,C19)
+```
+
+The resulting value for D19 would be as follows :
+
+```excel
+D19 = 511
+```
+
+### Explaination
+
+Let's first convert the original VLAN ID
+
+```excel
+256 = 0001 0000 0000
+
+15 = 1111
+```
+
+When evaluating
+
+```Excel
+ModVLANBits(A19, 4,7,B19)
+```
+
+The following is the process
+
+```excel
+                    11
+Bits    0123 4567 8901
+256 =   0001 0000 0000
+Range        |  |
+15 =         1111
+
+Result  0001 1111 0000 = 496
+````
+
+Then the compounded statement
+
+```excel
+=ModVLANBits(ModVLANBits(A19, 4,7,B19), 8,11,C19)
+```
+
+would operate as follows
+
+```excel
+                    11
+Bits    0123 4567 8901
+256 =   0001 0000 0000
+Range        |  | |  |
+15 =         1111 |  |
+Range             |  |
+15 =              1111
+Result  0001 1111 1111 = 511
+````
+
+### Function Documentation
+
+ModVLANBits has four input parameters
+
+* vlan - The base VLAN ID to alter (must be between 0 and 4095 inclusive)
+* fromBit - the zero based starting bit
+* toBit - the zero based ending bit
+* v - the value to inject (should not be larger than the specified bits will allow)

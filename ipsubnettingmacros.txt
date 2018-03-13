@@ -78,7 +78,7 @@ Public Function IPModBits(ip As String, fromBit As Integer, toBit As Integer, v 
     IPModBits = a & "." & b & "." & c & "." & d
 End Function
 
-Public Function ExpandIPv6Address(ipv6 As String)
+Public Function ExpandIPv6(ipv6 As String)
 
     ' Look for the :: in the middle
     If InStr(ipv6, "::") > 0 Then
@@ -126,27 +126,27 @@ Public Function ExpandIPv6Address(ipv6 As String)
         End If
             
         If highPartCount > 0 And lowPartCount > 0 Then
-            ExpandIPv6Address = highLow(0) & ":" & middlePart & ":" & highLow(1)
+            ExpandIPv6 = highLow(0) & ":" & middlePart & ":" & highLow(1)
         Else
             If highPartCount > 0 Then
-                ExpandIPv6Address = highLow(0) & ":" & middlePart
+                ExpandIPv6 = highLow(0) & ":" & middlePart
             Else
                 If lowPartCount > 0 Then
-                    ExpandIPv6Address = middlePart & ":" & highLow(1)
+                    ExpandIPv6 = middlePart & ":" & highLow(1)
                 Else
-                    ExpandIPv6Address = middlePart
+                    ExpandIPv6 = middlePart
                 End If
             End If
         End If
     Else
-        ExpandIPv6Address = ipv6
+        ExpandIPv6 = ipv6
     End If
 
 End Function
 
 Public Function FullExpandIPv6(ipv6 As String)
     Dim expanded As String
-    expanded = ExpandIPv6Address(ipv6)
+    expanded = ExpandIPv6(ipv6)
     
     Dim parts() As String
     parts = Split(expanded, ":")
@@ -195,7 +195,7 @@ Public Function CompressIPv6Address(ipv6 As String)
     Dim result As String
     
     Dim expanded As String
-    expanded = ExpandIPv6Address(ipv6)
+    expanded = ExpandIPv6(ipv6)
     
     Dim parts() As String
     parts = Split(expanded, ":")
@@ -412,7 +412,24 @@ Public Function IPv6ModBits(ipv6 As String, fromBit As Integer, toBit As Integer
     Dim alteredBits As String
     alteredBits = Left(addressbits, fromBit)
     alteredBits = alteredBits & Right(vBits, count)
-    alteredBits = alteredBits & Mid(addressbits, 1 + fromBits + count)
+    alteredBits = alteredBits & Mid(addressbits, 1 + fromBit + count)
     
     IPv6ModBits = BinaryToIPv6(alteredBits)
+End Function
+Public Function ModVLANBits(vlan As Integer, fromBit As Integer, toBit As Integer, v As Integer)
+    Dim vlanBits As String
+    Dim vBits As String
+    
+    Dim count As Integer
+    count = toBit - fromBit + 1
+
+    vlanBits = Int2Bin(vlan, 12)
+    vBits = Int2Bin(v, count)
+        
+    Dim alteredBits As String
+    alteredBits = Left(vlanBits, fromBit)
+    alteredBits = alteredBits & Right(vBits, count)
+    alteredBits = alteredBits & Mid(vlanBits, 1 + fromBit + count)
+    
+    ModVLANBits = Bin2Int(alteredBits)
 End Function
