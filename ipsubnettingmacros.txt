@@ -1,0 +1,82 @@
+Function Int2Bin(ByVal IntegerIn As Integer, _
+              Optional NumberOfBits As Integer) As String
+    Int2Bin = ""
+    Do While IntegerIn <> 0
+        Int2Bin = Format$(IntegerIn - 2 * Int(IntegerIn / 2)) & Int2Bin
+        IntegerIn = Int(IntegerIn / 2)
+    Loop
+    If Not IsMissing(NumberOfBits) Then
+       If Len(Int2Bin) > NumberOfBits Then
+          Int2Bin = "Error - Number exceeds specified bit size"
+       Else
+          Int2Bin = Right$(String$(NumberOfBits, _
+                    "0") & Int2Bin, NumberOfBits)
+       End If
+    End If
+End Function
+
+Function Bin2Int(BinaryString As String) As Variant
+    Dim X As Integer
+    For X = 0 To Len(BinaryString) - 1
+        Bin2Int = CDec(Bin2Int) + Val(Mid(BinaryString, _
+                  Len(BinaryString) - X, 1)) * 2 ^ X
+    Next
+End Function
+
+Public Function OctetAsBitString(octet As String)
+
+    Dim o As Integer
+    o = CInt(octet)
+    OctetAsBitString = Int2Bin(o, 8)
+
+End Function
+
+Public Function IpAsBitString(ip As String) As String
+
+
+    Dim octets() As String
+    octets = Split(ip, ".")
+    
+    If Not UBound(octets) = 3 Then
+      IpAsBitString = "Invalid IP address"
+    Else
+        Dim a, b, c, d As String
+        a = OctetAsBitString(octets(0))
+        b = OctetAsBitString(octets(1))
+        c = OctetAsBitString(octets(2))
+        d = OctetAsBitString(octets(3))
+
+        IpAsBitString = a & b & c & d
+    End If
+
+End Function
+
+Public Function IPModBits(ip As String, fromBit As Integer, toBit As Integer, v As Integer)
+
+    Dim count As Integer
+    count = toBit - fromBit + 1
+    
+    Dim ipString As String
+    ipString = IpAsBitString(ip)
+    
+    Dim vString As String
+    vString = Int2Bin(v, count)
+    
+    Dim leftPart, middlePart, rightPart As String
+    leftPart = Left(ipString, fromBit)
+    rightPart = Mid(ipString, fromBit + count + 1)
+        
+    Dim modString As String
+    modString = leftPart & vString & rightPart
+    
+    Dim a, b, c, d As Integer
+    a = Bin2Int(Mid(modString, 1, 8))
+    b = Bin2Int(Mid(modString, 9, 8))
+    c = Bin2Int(Mid(modString, 17, 8))
+    d = Bin2Int(Mid(modString, 25, 8))
+    
+    IPModBits = a & "." & b & "." & c & "." & d
+End Function
+
+
+
