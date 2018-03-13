@@ -4,6 +4,18 @@
 
 Included in this repository are some useful macros for use with Excel to make IP subnetting a little easier
 
+## How to use
+
+### Windows
+
+1) Press Alt+F11 to open the Microsoft Visual Basic for Applications window and click "Insert" and then "Module".
+
+2) Paste the content of the script file (for example ipsubnettingmacros.txt) into the file.
+
+Now those functions should be available within the spreadsheet.
+
+In order to use these macros within a spreadsheet, the spreadsheet must be saved as "Excel Macro-Enabled Workbook".
+
 ## Example of changing bits in an IP address
 
 ### Before
