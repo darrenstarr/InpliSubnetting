@@ -16,10 +16,10 @@ Function Int2Bin(ByVal IntegerIn As Integer, _
 End Function
 
 Function Bin2Int(BinaryString As String) As Variant
-    Dim X As Integer
-    For X = 0 To Len(BinaryString) - 1
+    Dim x As Integer
+    For x = 0 To Len(BinaryString) - 1
         Bin2Int = CDec(Bin2Int) + Val(Mid(BinaryString, _
-                  Len(BinaryString) - X, 1)) * 2 ^ X
+                  Len(BinaryString) - x, 1)) * 2 ^ x
     Next
 End Function
 
@@ -78,5 +78,341 @@ Public Function IPModBits(ip As String, fromBit As Integer, toBit As Integer, v 
     IPModBits = a & "." & b & "." & c & "." & d
 End Function
 
+Public Function ExpandIPv6Address(ipv6 As String)
 
+    ' Look for the :: in the middle
+    If InStr(ipv6, "::") > 0 Then
+        ' Split the string so that we have what's above and what's below
+        Dim highLow() As String
+        highLow = Split(ipv6, "::")
+        
+        Dim highParts() As String
+        Dim lowParts() As String
+        Dim partCount, highPartCount, lowPartCount As Integer
+    
+        Dim highPart, middlePart, lowPart As String
+    
+        If highLow(0) = vbNullString Then
+            highPartCount = 0
+        Else
+            ' Look for ':' within the high parts
+            If InStr(highLow(0), ":") > 0 Then
+                highParts = Split(highLow(0), ":")
+                highPartCount = UBound(highParts) - LBound(highParts) + 1
+            Else
+                highPartCount = 1
+            End If
+        End If
+        
+        If highLow(1) = vbNullString Then
+            lowPartCount = 0
+        Else
+            ' Look for ':' within the low parts
+            If InStr(highLow(1), ":") > 0 Then
+                lowParts = Split(highLow(1), ":")
+                lowPartCount = UBound(lowParts) - LBound(lowParts) + 1
+            Else
+                lowPartCount = 1
+            End If
+        End If
+        
+        partCount = highPartCount + lowPartCount
+            
+        If partCount < 8 Then
+            For i = 2 To (8 - partCount)
+                middlePart = middlePart + "0:"
+            Next
+            middlePart = middlePart + "0"
+        End If
+            
+        If highPartCount > 0 And lowPartCount > 0 Then
+            ExpandIPv6Address = highLow(0) & ":" & middlePart & ":" & highLow(1)
+        Else
+            If highPartCount > 0 Then
+                ExpandIPv6Address = highLow(0) & ":" & middlePart
+            Else
+                If lowPartCount > 0 Then
+                    ExpandIPv6Address = middlePart & ":" & highLow(1)
+                Else
+                    ExpandIPv6Address = middlePart
+                End If
+            End If
+        End If
+    Else
+        ExpandIPv6Address = ipv6
+    End If
 
+End Function
+
+Public Function FullExpandIPv6(ipv6 As String)
+    Dim expanded As String
+    expanded = ExpandIPv6Address(ipv6)
+    
+    Dim parts() As String
+    parts = Split(expanded, ":")
+    
+    Dim result As String
+    For i = 0 To 7
+        If i > 0 Then
+            result = result & ":"
+        End If
+    
+        Dim part As String
+        part = parts(i)
+        
+        result = result + String(4 - Len(part), "0") + LCase(part)
+    Next
+
+    FullExpandIPv6 = result
+
+End Function
+
+Private Function CompressPart(part As String)
+
+    If part = "0" Or part = "00" Or part = "000" Or part = "0000" Then
+        CompressPart = "0"
+    Else
+        If Left(part, 3) = "000" Then
+            CompressPart = Mid(part, 4)
+        Else
+            If Left(part, 2) = "00" Then
+                CompressPart = Mid(part, 3)
+            Else
+                If Left(part, 1) = "0" Then
+                    CompressPart = Mid(part, 2)
+                Else
+                    CompressPart = part
+                End If
+            End If
+        End If
+    End If
+
+End Function
+
+Public Function CompressIPv6Address(ipv6 As String)
+
+    Dim part As String
+    Dim result As String
+    
+    Dim expanded As String
+    expanded = ExpandIPv6Address(ipv6)
+    
+    Dim parts() As String
+    parts = Split(expanded, ":")
+
+    Dim allZeros As Boolean
+    allZeros = True
+    
+    Dim noZeros As Boolean
+    noZeros = True
+    
+    For i = 0 To 7
+        part = CompressPart(parts(i))
+        parts(i) = part
+        
+        If part = "0" Then
+            noZeros = False
+        Else
+            allZeros = False
+        End If
+    Next
+
+    If allZeros Then
+        CompressIPv6Address = "::"
+    Else
+        If noZeros Then
+            For i = 0 To 7
+                If i > 0 Then
+                    result = result & ":"
+                End If
+    
+                result = result & parts(i)
+            Next
+            
+            CompressIPv6Address = result
+        Else
+            Dim runLengths(8) As Integer
+            For i = 0 To 7
+                Dim runLength As Integer
+                runLength = 0
+                
+                Dim k As Integer
+                k = i
+                While k < 8
+                    If parts(k) = "0" Then
+                        runLength = runLength + 1
+                        k = k + 1
+                    Else
+                        k = 8
+                    End If
+                Wend
+                
+                runLengths(i) = runLength
+            Next
+            
+            Dim longestRunLength As Integer
+            Dim longestAt As Integer
+            
+            longestRunLength = -1
+            longestAt = -1
+            
+            For i = 0 To 7
+                If runLengths(i) > longestRunLength Then
+                    longestRunLength = runLengths(i)
+                    longestAt = i
+                End If
+            Next
+            
+            If longestRunLength = 0 Then
+                For i = 0 To 7
+                    If i > 0 Then
+                        result = result & ":"
+                    End If
+        
+                    result = result & parts(i)
+                Next
+                
+                CompressIPv6Address = result
+            Else
+                If longestAt = 0 Then
+                    result = ":"
+                    
+                    For i = longestRunLength To 7
+                        result = result & ":" & parts(i)
+                    Next
+                
+                    CompressIPv6Address = result
+                Else
+                    If (longestAt + longestRunLength) = 8 Then
+                        result = ""
+                        For i = 0 To longestAt
+                            result = result & parts(i) & ":"
+                        Next
+                        
+                        CompressIPv6Address = result & ":"
+                    Else
+                        result = ""
+                        
+                        For i = 0 To (longestAt - 1)
+                            result = result & parts(i) & ":"
+                        Next
+                        
+                        For i = longestAt + longestRunLength To 7
+                            result = result & ":" & parts(i)
+                        Next
+                        
+                        CompressIPv6Address = result
+                    End If
+                End If
+            End If
+        End If
+    End If
+End Function
+Public Function IPv6ToBinary(ipv6 As String)
+    Dim result As String
+    Dim expanded As String
+    
+    expanded = FullExpandIPv6(ipv6)
+    
+    For i = 1 To Len(expanded)
+        Select Case Mid(expanded, i, 1)
+            Case "0"
+                result = result + "0000"
+            Case "1"
+                result = result + "0001"
+            Case "2"
+                result = result + "0010"
+            Case "3"
+                result = result + "0011"
+            Case "4"
+                result = result + "0100"
+            Case "5"
+                result = result + "0101"
+            Case "6"
+                result = result + "0110"
+            Case "7"
+                result = result + "0111"
+            Case "8"
+                result = result + "1000"
+            Case "9"
+                result = result + "1001"
+            Case "a"
+                result = result + "1010"
+            Case "b"
+                result = result + "1011"
+            Case "c"
+                result = result + "1100"
+            Case "d"
+                result = result + "1101"
+            Case "e"
+                result = result + "1110"
+            Case "f"
+                result = result + "1111"
+        End Select
+    Next
+
+    IPv6ToBinary = result
+End Function
+Public Function BinaryToIPv6(ipv6Bits)
+    Dim fullAddress As String
+    
+    For i = 1 To Len(ipv6Bits) Step 4
+        If i > 1 And ((i - 1) Mod 16) = 0 Then
+            fullAddress = fullAddress & ":"
+        End If
+        Select Case Mid(ipv6Bits, i, 4)
+            Case "0000"
+                fullAddress = fullAddress & "0"
+            Case "0001"
+                fullAddress = fullAddress & "1"
+            Case "0010"
+                fullAddress = fullAddress & "2"
+            Case "0011"
+                fullAddress = fullAddress & "3"
+            Case "0100"
+                fullAddress = fullAddress & "4"
+            Case "0101"
+                fullAddress = fullAddress & "5"
+            Case "0110"
+                fullAddress = fullAddress & "6"
+            Case "0111"
+                fullAddress = fullAddress & "7"
+            Case "1000"
+                fullAddress = fullAddress & "8"
+            Case "1001"
+                fullAddress = fullAddress & "9"
+            Case "1010"
+                fullAddress = fullAddress & "a"
+            Case "1011"
+                fullAddress = fullAddress & "b"
+            Case "1100"
+                fullAddress = fullAddress & "c"
+            Case "1101"
+                fullAddress = fullAddress & "d"
+            Case "1110"
+                fullAddress = fullAddress & "e"
+            Case "1111"
+                fullAddress = fullAddress & "f"
+        End Select
+    Next
+    
+    BinaryToIPv6 = CompressIPv6Address(fullAddress)
+    
+End Function
+Public Function IPv6ModBits(ipv6 As String, fromBit As Integer, toBit As Integer, v As Integer)
+    Dim addressbits As String
+    Dim vBits As String
+        
+    Dim count As Integer
+    count = toBit - fromBit + 1
+
+    addressbits = IPv6ToBinary(ipv6)
+    vBits = Int2Bin(v, count)
+        
+    Dim alteredBits As String
+    alteredBits = Left(addressbits, fromBit)
+    alteredBits = alteredBits & Right(vBits, count)
+    alteredBits = alteredBits & Mid(addressbits, 1 + fromBits + count)
+    
+    IPv6ModBits = BinaryToIPv6(alteredBits)
+End Function
