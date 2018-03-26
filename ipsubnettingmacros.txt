@@ -433,3 +433,54 @@ Public Function ModVLANBits(vlan As Integer, fromBit As Integer, toBit As Intege
     
     ModVLANBits = Bin2Int(alteredBits)
 End Function
+Public Function IPFromPrefix(prefix As String)
+    Dim parts() As String
+    
+    parts = Split(prefix, "/")
+    
+    IPFromPrefix = parts(0)
+End Function
+Public Function LengthFromPrefix(prefix As String)
+    Dim parts() As String
+    
+    parts = Split(prefix, "/")
+    
+    IPFromPrefix = parts(1)
+End Function
+Public Function OffsetIP(ip As String, offset As Integer)
+
+    Dim octets() As String
+    octets = Split(ip, ".")
+    
+    If Not UBound(octets) = 3 Then
+      OffsetIP = "Invalid IP address"
+    Else
+      octetA = CInt(octets(0))
+      octetB = CInt(octets(1))
+      octetC = CInt(octets(2))
+      octetD = CInt(octets(3))
+      
+      octetD = octetD + offset
+      If octetD > 255 Then
+        octetC = Int(octetC + (octetD / 256))
+        octetD = Int(octetD Mod 256)
+        
+        If octetC > 255 Then
+          octetB = Int(octetB + (octetC / 256))
+          octetC = Int(octetC Mod 256)
+      
+          If octetB > 255 Then
+            octetA = Int(octetA + (octetB / 256))
+            octetB = Int(octetB Mod 256)
+      
+            If octetA > 255 Then
+                octetA = 255
+            End If
+          End If
+        End If
+      End If
+    
+      OffsetIP = CStr(octetA) & "." & CStr(octetB) & "." & CStr(octetC) & "." & CStr(octetD)
+    End If
+End Function
+

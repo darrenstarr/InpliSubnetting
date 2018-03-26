@@ -269,3 +269,82 @@ ModVLANBits has four input parameters
 * fromBit - the zero based starting bit
 * toBit - the zero based ending bit
 * v - the value to inject (should not be larger than the specified bits will allow)
+
+## Function IPFromPrefix
+
+Return the IP portion from a prefix. This simply splits the Prefix on the "/" and returns the first part. This should work for IPv6 as well
+
+### Function documentation
+
+IPFromPrefix has a single input parameter
+
+* ip - the IP or IPv6 address to split
+
+### Example
+
+```excel
+=IPFromPrefix("10.100.1.1/24")
+```
+
+Returns
+
+```excel
+10.100.1.1
+```
+
+## Function LengthFromPrefix
+
+Return the length portion from a prefix. This simply splits the Prefix on the "/" and returns the second part. This should work for IPv6 as well
+
+### Function documentation
+
+LengthFromPrefix has a single input parameter
+
+* ip - the IP or IPv6 address to split
+
+### Example
+
+```excel
+=LengthFromPrefix("10.100.1.1/24")
+```
+
+Returns
+
+```excel
+24
+```
+
+## Function OffsetIP
+
+Calculate a new IP address relative to a given IP address
+
+### Function documentation
+
+OffsetIP has the following parameters
+
+* ip - the IP address to use as a base
+* offset - the number of addresses to offset from
+
+### Example
+
+```excel
+A1 = 10.100.1.0
+
+B1:B10 = OffsetIP($A$1, ROW() - 1)
+```
+
+The result is as follows
+
+|    |          A |          B |
+|----|------------|------------|
+|  1 | 10.100.1.0 | 10.100.1.0 |
+|  2 |            | 10.100.1.1 |
+|  3 |            | 10.100.1.2 |
+|  4 |            | 10.100.1.3 |
+|  5 |            | 10.100.1.4 |
+|  6 |            | 10.100.1.5 |
+|  7 |            | 10.100.1.6 |
+|  8 |            | 10.100.1.7 |
+|  9 |            | 10.100.1.8 |
+| 10 |            | 10.100.1.9 |
+
