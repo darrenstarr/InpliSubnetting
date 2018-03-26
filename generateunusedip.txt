@@ -1,0 +1,343 @@
+' This subroutine can be called by a command button inserted into a spreadsheet
+' to scan the spreadsheet based on zones and subnets within another worksheet
+' and to calculate the next available IP address in a range.
+'
+' At the top of the function are some settings that can be used to configure worksheet
+' names and table column headings for the search.
+' 
+' The first section configures which worksheet to lookup network prefixes from as
+' well as the names of the columns to use for the search.
+'
+' The second section configures the headings of the columns for the table which
+' will be populated.
+'
+' There is a lot of code in here to attempt to keep the user from making any mistakes.
+' But as it's really just an Excel script, the amount of effort placed into Checking
+' has been focused primarily on possibly destructive changes.
+'
+' As can be seen in the code, there is some "useful" troubleshooting information
+' generated from the script and can be seen from the "immediate window" accessible
+' from within the "Visual Basic Debugger" within Excel.
+'
+' This code is dependent on the ipsubnettingmacros.txt found in this repository as
+' well.
+Sub GenerateIP()
+    Dim LookupWorksheetTitle As String
+    Dim LookupZoneColumnTitle As String
+    Dim LookupSubnetColumnTitle As String
+    Dim LookupIPAddressColumnTitle As String
+    
+    '---------------------------------------------------------------------------
+    ' Configure the settings for where to lookup IP addresses
+    '---------------------------------------------------------------------------
+    
+    ' Configure the worksheet to lookup the subnet from
+    LookupWorksheetTitle = "Sone"
+    
+    ' Configure the name of the column which contains the zone number
+    LookupZoneColumnTitle = "Sone"
+    
+    ' Configure the name of the column which contains the subnet number
+    LookupSubnetColumnTitle = "Subnet"
+    
+    ' Configure the name of the column to extract the network prefix from
+    LookupIPAddressColumnTitle = "IPv4 Nett"
+
+    '---------------------------------------------------------------------------
+    ' Configure the settings for column headings in the table to populate
+    '---------------------------------------------------------------------------
+    
+    Dim SourceZoneColumnName As String
+    Dim SourceSubnetColumnName As String
+    Dim DestinationIPAddressColumnName As String
+    
+    ' Configure the name of the column which contains the zone to lookup
+    SourceZoneColumnName = "Sone"
+    
+    ' Configure the name of the column which contains the subnet to lookup
+    SourceSubnetColumnName = "Subnet"
+    
+    ' Configure the name of the column which should contain the IP address
+    DestinationIPAddressColumnName = "IP Address"
+
+    '---------------------------------------------------------------------------
+    ' End of Configuration section
+    '---------------------------------------------------------------------------
+
+    ' If there is no selection, exit
+    If Selection Is Nothing Then
+        Exit Sub
+    End If
+    
+    ' If there is not precisely one cell selected, exit
+    If Selection.Cells.count <> 1 Then
+        Exit Sub
+    End If
+    
+    ' Find the row which is selected
+    Dim selectedRow As Integer
+    selectedRow = Selection.Row
+        
+    ' Find the column which is selected
+    Dim selectedColumn As Integer
+    selectedColumn = Selection.Column
+    
+    ' Get the worksheet which contains the selected cell
+    Dim selectedWorksheet As Worksheet
+    Set selectedWorksheet = Selection.Worksheet
+    
+    ' Get the worksheet which contains the lookup table
+    Dim ZoneWorksheet As Worksheet
+    Set ZoneWorksheet = Worksheets(LookupWorksheetTitle)
+        
+    ' ----------------------------------------------------------------
+    ' Find the indices of the columns referenced in the configuration
+    ' ----------------------------------------------------------------
+    
+    ' Use the first row of the page with the selection as the table heading
+    Dim destinationHeadingRow As Range
+    Set destinationHeadingRow = selectedWorksheet.Range("1:1")
+    
+    ' Find "DestinationIPAddressColumnName"
+    Dim foundCell As Range
+    Set foundCell = destinationHeadingRow.Find(what:=DestinationIPAddressColumnName, LookIn:=xlValues, lookat:=xlWhole, SearchOrder:=xlByColumns)
+    If foundCell Is Nothing Then
+        Debug.Print "Failed to find column named: " & DestinationIPAddressColumnName
+        Exit Sub
+    End If
+    
+    Dim destinationIPAddressColumnIndex As Integer
+    destinationIPAddressColumnIndex = foundCell.Column
+    
+    ' Find "SourceZoneColumnName"
+    Set foundCell = destinationHeadingRow.Find(what:=SourceZoneColumnName, LookIn:=xlValues, lookat:=xlWhole, SearchOrder:=xlByColumns)
+    If foundCell Is Nothing Then
+        Debug.Print "Failed to find column named: " & SourceZoneColumnName
+        Exit Sub
+    End If
+    
+    Dim sourceZoneColumnIndex As Integer
+    sourceZoneColumnIndex = foundCell.Column
+    
+    ' Find "SourceSubnetColumnName"
+    Set foundCell = destinationHeadingRow.Find(what:=SourceSubnetColumnName, LookIn:=xlValues, lookat:=xlWhole, SearchOrder:=xlByColumns)
+    If foundCell Is Nothing Then
+        Debug.Print "Failed to find column named: " & SourceSubnetColumnName
+        Exit Sub
+    End If
+    
+    Dim sourceSubnetColumnIndex As Integer
+    sourceSubnetColumnIndex = foundCell.Column
+    
+    ' Use the first row of the page with zone/subnet lookup table as the table heading
+    Dim lookupHeadingRow As Range
+    Set lookupHeadingRow = ZoneWorksheet.Range("1:1")
+    
+    ' Find "LookupZoneColumnTitle"
+    Set foundCell = lookupHeadingRow.Find(what:=LookupZoneColumnTitle, LookIn:=xlValues, lookat:=xlWhole, SearchOrder:=xlByColumns)
+    If foundCell Is Nothing Then
+        Debug.Print "Failed to find column named: " & LookupZoneColumnTitle
+        Exit Sub
+    End If
+    
+    Dim lookupZoneColumnIndex As Integer
+    lookupZoneColumnIndex = foundCell.Column
+    
+    ' Find "LookupSubnetColumnTitle"
+    Set foundCell = lookupHeadingRow.Find(what:=LookupSubnetColumnTitle, LookIn:=xlValues, lookat:=xlWhole, SearchOrder:=xlByColumns)
+    If foundCell Is Nothing Then
+        Debug.Print "Failed to find column named: " & LookupSubnetColumnTitle
+        Exit Sub
+    End If
+    
+    Dim lookupSubnetColumnIndex As Integer
+    lookupSubnetColumnIndex = foundCell.Column
+    
+    ' Find "LookupIPAddressColumnTitle"
+    Set foundCell = lookupHeadingRow.Find(what:=LookupIPAddressColumnTitle, LookIn:=xlValues, lookat:=xlWhole, SearchOrder:=xlByColumns)
+    If foundCell Is Nothing Then
+        Debug.Print "Failed to find column named: " & LookupIPAddressColumnTitle
+        Exit Sub
+    End If
+    
+    Dim lookupIPAddressColumnIndex As Integer
+    lookupIPAddressColumnIndex = foundCell.Column
+    
+    '--------------------
+    ' Headings all found
+    '--------------------
+        
+    ' If the selected column is not where the IP address should be placed, exit
+    If selectedRow < 2 Or selectedColumn <> destinationIPAddressColumnIndex Then
+        Exit Sub
+    End If
+    
+    ' Don't allow changing IP addresses with this button. Instead make the user delete the existing one first.
+    If Not IsEmpty(Selection) Then
+         MsgBox "Selected cell is not empty.", vbInformation + vbOKOnly, "Nothing to do"
+         Exit Sub
+    End If
+    
+    ' Get the cell which contains the zone to lookup
+    Dim zoneCell As Range
+    Set zoneCell = selectedWorksheet.Cells(selectedRow, sourceZoneColumnIndex)
+    
+    ' If there's no zone on the selected line then inform the user and exit
+    If IsEmpty(zoneCell) Then
+        MsgBox "There is no zone specified for the address", vbCritical + vbOKOnly, "Error"
+        Exit Sub
+    End If
+    
+    ' Get the value of what zone the line of the selection is on
+    Dim zone As Integer
+    zone = zoneCell.Value
+    
+    ' Get the cell which contains the subnet to lookup
+    Dim subnetCell As Range
+    Set subnetCell = selectedWorksheet.Cells(selectedRow, sourceSubnetColumnIndex)
+    
+    ' If there's no subnet on the selected line then inform the user an exit
+    If IsEmpty(subnetCell) Then
+        MsgBox "There is no subnet specified for the address", vbCritical + vbOKOnly, "Error"
+        Exit Sub
+    End If
+            
+    ' Get the value of what subnet the line of the selection is on
+    subnet = subnetCell.Value
+    
+    ' Generate a range for the lookup column containing zones
+    Dim ZoneSearchColumn As Range
+    Set ZoneSearchColumn = ZoneWorksheet.Columns(lookupZoneColumnIndex)
+    
+    Dim NetworkPrefix As String
+
+    ' Search for cells in the zone column containing the specified zone
+    Set foundCell = ZoneSearchColumn.Find(what:=zone, LookIn:=xlValues, lookat:=xlWhole, SearchOrder:=xlByRows)
+    While Not foundCell Is Nothing
+        ' Get a handle to the entire row for the entry
+        Dim FoundRow As Excel.Range
+        Set FoundRow = foundCell.EntireRow
+        
+        Debug.Print FoundRow.Address
+        
+        ' Get a handle to the cell in the column with a subnet heading
+        Set subnetCell = FoundRow.Cells(1, lookupSubnetColumnIndex)
+        
+        ' If the cell value is the sought after subnet number extract the prefix and exit
+        If subnetCell.Value = subnet Then
+            NetworkPrefix = CStr(FoundRow.Cells(1, lookupIPAddressColumnIndex).Value)
+            Set foundCell = Nothing
+        Else
+            ' Otherwise, look for the next cell
+            Dim nextFoundCell As Range
+            Set nextFoundCell = ZoneSearchColumn.FindNext(After:=foundCell)
+            
+            ' Since FindNext loops, handle this by comparing whether the new found cell has a
+            ' lower row number than the previous cell
+            If nextFoundCell.Row < foundCell.Row Then
+                Set foundCell = Nothing
+            Else
+                foundCell = nextFoundCell
+            End If
+        End If
+    Wend
+
+    ' If the prefix could not be found then inform the user and exit
+    If IsEmpty(NetworkPrefix) Then
+        MsgBox "Failed to find the network corresponding to the given zone and subject", vbInformation + vbOKOnly, "Nothing found"
+        Exit Sub
+    End If
+        
+    ' Extract the subnet address from the prefix
+    Dim subnetAddress As String
+    subnetAddress = IPFromPrefix(NetworkPrefix)
+        
+    ' Extract the prefix length from the prefix
+    Dim prefixLength As Integer
+    prefixLength = LengthFromPrefix(NetworkPrefix)
+   
+    ' Validate the prefix length of the given address
+    If prefixLength < 0 Or prefixLength > 29 Then
+        MsgBox "The algorithm used to calculate IP addresses in this table requires at least a /29", vbCritical + vbOKOnly, "Error"
+    End If
+   
+    ' Assume the first usable IP address is the subnet address
+    Dim virtualRouterAddress As String
+    virtualRouterAddress = OffsetIP(subnetAddress, 1)
+    
+    ' Assume the second usable IP address is the first router in the HSRP group
+    Dim routerAAddress As String
+    routerAAddress = OffsetIP(subnetAddress, 2)
+    
+    ' Assume the third usable IP address is the second router in the HSRP group
+    Dim routerBAddress As String
+    routerBAddress = OffsetIP(subnetAddress, 3)
+    
+    ' Assume the fourth usable IP address is the first server assignable address
+    Dim firstUsableAddress As String
+    firstUsableAddress = OffsetIP(subnetAddress, 4)
+        
+    ' Calculate the total number of IP addresses in the subnet
+    Dim totalIPs As Integer
+    totalIPs = 2 ^ (32 - prefixLength)
+    
+    ' Calculate the broadcast address
+    Dim broadcastAddress As String
+    broadcastAddress = OffsetIP(subnetAddress, totalIPs - 1)
+        
+    ' Calculate the last usable address in the range
+    Dim lastUsableAddress As String
+    lastUsableAddress = OffsetIP(subnetAddress, totalIPs - 2)
+    
+    ' Calculate the total number of usable IP addresses in the range
+    Dim totalUsableIPs As Integer
+    totalUsableIPs = totalIPs - 5
+    
+    ' Print some debugging information for reporting
+    Debug.Print "Zone:" & CStr(zone) & Chr(13) & Chr(10) & _
+           "Subnet:" & CStr(subnet) & Chr(13) & Chr(10) & _
+           "Subnet address:" & subnetAddress & Chr(13) & Chr(10) & _
+           "Broadcast address:" & broadcastAddress & Chr(13) & Chr(10) & _
+           "HSRP VIP:" & virtualRouterAddress & Chr(13) & Chr(10) & _
+           "Router A:" & routerAAddress & Chr(13) & Chr(10) & _
+           "Router B:" & routerBAddress & Chr(13) & Chr(10) & _
+           "Prefix length:" & CStr(prefixLength) & Chr(13) & Chr(10) & _
+           "Total IPs:" & CStr(totalIPs) & Chr(13) & Chr(10) & _
+           "Total Usable IPs:" & CStr(totalUsableIPs) & Chr(13) & Chr(10) & _
+           "First usable IP:" & firstUsableAddress & Chr(13) & Chr(10) & _
+           "Last usable IP:" & lastUsableAddress & Chr(13) & Chr(10) & _
+           ""
+
+    ' If there are no IP addresses available in the range at this point, inform the user and exit
+    If totalUsableIPs <= 0 Then
+        MsgBox "There are no remaining IP's available in this subnet", vbOKOnly, "Error"
+        Exit Sub
+    End If
+    
+    ' Select the entire column to search for used IP addreses
+    Dim serverIPColumn As Range
+    Set serverIPColumn = Selection.EntireColumn
+    
+    ' Loop through each server assignable IP address in the subnet
+    Dim i As Integer
+    For i = 4 To (totalIPs - 4)
+    
+        ' Calculate the next IP address to try based on the index
+        Dim toCheck As String
+        toCheck = OffsetIP(subnetAddress, i)
+        
+        Debug.Print "Checking..." + toCheck
+    
+        ' Look for the calculated IP address in the column
+        Set foundCell = serverIPColumn.Find(what:=toCheck, LookIn:=xlValues, lookat:=xlWhole, SearchOrder:=xlByColumns)
+        
+        ' If the address is not found, then it's available
+        If foundCell Is Nothing Then
+            Debug.Print "IP: " & toCheck & " is not in use"
+            
+            ' Copy the IP address into the cell and exit
+            Selection.Value = toCheck
+            Exit Sub
+        End If
+    Next
+End Sub
