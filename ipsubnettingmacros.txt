@@ -445,7 +445,7 @@ Public Function LengthFromPrefix(prefix As String)
     
     parts = Split(prefix, "/")
     
-    LengthFromPrefix = parts(1)
+    LengthFromPrefix = CInt(parts(1))
 End Function
 Public Function OffsetIP(ip As String, offset As Integer)
 
@@ -483,4 +483,5 @@ Public Function OffsetIP(ip As String, offset As Integer)
       OffsetIP = CStr(octetA) & "." & CStr(octetB) & "." & CStr(octetC) & "." & CStr(octetD)
     End If
 End Function
+
 
