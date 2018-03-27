@@ -1,26 +1,3 @@
-' This subroutine can be called by a command button inserted into a spreadsheet
-' to scan the spreadsheet based on zones and subnets within another worksheet
-' and to calculate the next available IP address in a range.
-'
-' At the top of the function are some settings that can be used to configure worksheet
-' names and table column headings for the search.
-' 
-' The first section configures which worksheet to lookup network prefixes from as
-' well as the names of the columns to use for the search.
-'
-' The second section configures the headings of the columns for the table which
-' will be populated.
-'
-' There is a lot of code in here to attempt to keep the user from making any mistakes.
-' But as it's really just an Excel script, the amount of effort placed into Checking
-' has been focused primarily on possibly destructive changes.
-'
-' As can be seen in the code, there is some "useful" troubleshooting information
-' generated from the script and can be seen from the "immediate window" accessible
-' from within the "Visual Basic Debugger" within Excel.
-'
-' This code is dependent on the ipsubnettingmacros.txt found in this repository as
-' well.
 Sub GenerateIP()
     Dim LookupWorksheetTitle As String
     Dim LookupZoneColumnTitle As String
@@ -237,13 +214,13 @@ Sub GenerateIP()
             If nextFoundCell.Row < foundCell.Row Then
                 Set foundCell = Nothing
             Else
-                foundCell = nextFoundCell
+                Set foundCell = nextFoundCell
             End If
         End If
     Wend
 
     ' If the prefix could not be found then inform the user and exit
-    If IsEmpty(NetworkPrefix) Then
+    If Trim(NetworkPrefix) = "" Then
         MsgBox "Failed to find the network corresponding to the given zone and subject", vbInformation + vbOKOnly, "Nothing found"
         Exit Sub
     End If
