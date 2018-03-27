@@ -297,13 +297,13 @@ Sub GenerateIP()
     
     ' Loop through each server assignable IP address in the subnet
     Dim i As Integer
-    For i = 4 To (totalIPs - 4)
+    For i = 4 To (totalIPs - 2)
     
         ' Calculate the next IP address to try based on the index
         Dim toCheck As String
         toCheck = OffsetIP(subnetAddress, i)
         
-        Debug.Print "Checking..." + toCheck
+        ' Debug.Print "Checking..." + toCheck
     
         ' Look for the calculated IP address in the column
         Set foundCell = serverIPColumn.Find(what:=toCheck, LookIn:=xlValues, lookat:=xlWhole, SearchOrder:=xlByColumns)
@@ -317,4 +317,6 @@ Sub GenerateIP()
             Exit Sub
         End If
     Next
+    
+    MsgBox "No more IPs availabe in this subnet", vbExclamation + vbOKOnly, "Out of IPs"
 End Sub
