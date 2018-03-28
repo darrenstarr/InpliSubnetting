@@ -14,6 +14,22 @@ Function Int2Bin(ByVal IntegerIn As Integer, _
        End If
     End If
 End Function
+Function Long2Bin(ByVal LongIn As Long, _
+              Optional NumberOfBits As Integer) As String
+    Long2Bin = ""
+    Do While LongIn <> 0
+        Long2Bin = Format$(LongIn - 2 * Int(LongIn / 2)) & Long2Bin
+        LongIn = Int(LongIn / 2)
+    Loop
+    If Not IsMissing(NumberOfBits) Then
+       If Len(Long2Bin) > NumberOfBits Then
+          Long2Bin = "Error - Number exceeds specified bit size"
+       Else
+          Long2Bin = Right$(String$(NumberOfBits, _
+                    "0") & Long2Bin, NumberOfBits)
+       End If
+    End If
+End Function
 
 Function Bin2Int(BinaryString As String) As Variant
     Dim x As Integer
@@ -433,6 +449,23 @@ Public Function ModVLANBits(vlan As Integer, fromBit As Integer, toBit As Intege
     
     ModVLANBits = Bin2Int(alteredBits)
 End Function
+Public Function ModASBits(autonomousSystem As Long, fromBit As Integer, toBit As Integer, v As Integer)
+    Dim autonomousSystemBits As String
+    Dim vBits As String
+    
+    Dim count As Integer
+    count = toBit - fromBit + 1
+
+    autonomousSystemBits = Long2Bin(autonomousSystem, 16)
+    vBits = Int2Bin(v, count)
+        
+    Dim alteredBits As String
+    alteredBits = Left(autonomousSystemBits, fromBit)
+    alteredBits = alteredBits & Right(vBits, count)
+    alteredBits = alteredBits & Mid(autonomousSystemBits, 1 + fromBit + count)
+    
+    ModASBits = Bin2Int(alteredBits)
+End Function
 Public Function IPFromPrefix(prefix As String)
     Dim parts() As String
     
@@ -483,5 +516,3 @@ Public Function OffsetIP(ip As String, offset As Integer)
       OffsetIP = CStr(octetA) & "." & CStr(octetB) & "." & CStr(octetC) & "." & CStr(octetD)
     End If
 End Function
-
-
